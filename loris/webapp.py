@@ -67,6 +67,7 @@ def get_debug_config(debug_jp2_transformer):
     config['resolver']['src_img_root'] = path.join(project_dp,'tests','img')
     config['transforms']['target_formats'] = [ 'jpg', 'png', 'gif', 'webp', 'tif']
     config['auth_service'] = 'loris.auth_service.NilAuthorizationService'
+    
     if debug_jp2_transformer == 'opj':
         config['transforms']['jp2']['impl'] = 'OPJ_JP2Transformer'
         config['transforms']['jp2']['opj_decompress'] = '/usr/bin/opj_decompress'
@@ -347,6 +348,7 @@ class Loris(object):
         self.resolver = self._load_resolver()
         self.authorizer = self._load_authorizer()
         self.auth_service = self._load_auth_service()
+
         self.max_size_above_full = _loris_config.get('max_size_above_full', 200)
 
         if self.enable_caching:
@@ -547,16 +549,11 @@ class Loris(object):
         if in_cache and self.info_cache[request][0].src_format:
             return self.info_cache[request]
         else:
-            if not all((src_fp, src_format)):
-                # get_img can pass in src_fp, src_format because it needs them
-                # elsewhere; get_info does not.
-                is_authenticated = self.auth_service.can('info', ident)
-                if is_authenticated is False:
-                    msg = "could not resolve identifier: %s " % (ident)
-                    logger.error(msg)
-                    raise ResolverException(404, msg)
-
-                src_fp, src_format = self.resolver.resolve(ident)
+            is_authenticated = self.auth_service.can('info', ident)
+            if is_authenticated is False:
+                msg = "could not resolve identifier: %s " % (ident)
+                logger.error(msg)
+                raise ResolverException(404, msg)
 
             info = self.resolver.resolve(self, ident, base_uri)
 
@@ -652,13 +649,10 @@ class Loris(object):
                 r.headers['Content-Length'] = path.getsize(fp)
                 r.response = open(fp, 'rb')
 
-                # resolve the identifier
                 is_authenticated = self.auth_service.can('show', ident)
                 if is_authenticated is False:
                    msg = "could not resolve identifier: %s " % (ident)
                    return NotFoundResponse(msg)
-
-                src_fp, src_format = self.resolver.resolve(ident)
                 
                 # hand the Image object its info
                 info = self._get_info(ident, request, base_uri)[0]
