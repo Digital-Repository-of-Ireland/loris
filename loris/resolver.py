@@ -667,7 +667,10 @@ class RadosHTTPResolver(SimpleHTTPResolver):
         key = bucket.get_key(keyname)
         auth_url = key.generate_url(3600, query_auth=True, force_http=True)
 
-        return key.generate_url(3600, query_auth=True, force_http=True)
+        # Get the generic options
+        options = self.request_options()
+
+        return(key.generate_url(3600, query_auth=True, force_http=True), options)
 
     def request_options(self):
         # currently no username/password supported
