@@ -66,8 +66,7 @@ def get_debug_config(debug_jp2_transformer):
     config['resolver']['impl'] = 'loris.resolver.SimpleFSResolver'
     config['resolver']['src_img_root'] = path.join(project_dp,'tests','img')
     config['transforms']['target_formats'] = [ 'jpg', 'png', 'gif', 'webp', 'tif']
-    config['auth_service'] = 'loris.auth_service.NilAuthorizationService'
-    
+
     if debug_jp2_transformer == 'opj':
         config['transforms']['jp2']['impl'] = 'OPJ_JP2Transformer'
         config['transforms']['jp2']['opj_decompress'] = '/usr/bin/opj_decompress'
@@ -347,8 +346,6 @@ class Loris(object):
         self.transformers = self._load_transformers()
         self.resolver = self._load_resolver()
         self.authorizer = self._load_authorizer()
-        self.auth_service = self._load_auth_service()
-
         self.max_size_above_full = _loris_config.get('max_size_above_full', 200)
 
         if self.enable_caching:
@@ -390,13 +387,6 @@ class Loris(object):
         else:
             AuthorizerClass = self._import_class(impl)
             return AuthorizerClass(self.app_configs['authorizer'])
-    
-    def _load_auth_service(self):
-        impl = self.app_configs['auth_service']['impl']
-        AuthServiceClass = self._import_class(impl)
-        auth_config = self.app_configs['auth_service'].copy()
-        del auth_config['impl']
-        return AuthServiceClass(auth_config)
 
     def _import_class(self, qname):
         '''Imports a class AND returns it (the class, not an instance).
@@ -549,11 +539,6 @@ class Loris(object):
         if in_cache and self.info_cache[request][0].src_format:
             return self.info_cache[request]
         else:
-            is_authenticated = self.auth_service.can('info', ident)
-            if is_authenticated is False:
-                msg = "could not resolve identifier: %s " % (ident)
-                self.logger.error(msg)
-                raise ResolverException(404, msg)
 
             info = self.resolver.resolve(self, ident, base_uri)
 
@@ -649,11 +634,6 @@ class Loris(object):
                 r.headers['Content-Length'] = path.getsize(fp)
                 r.response = open(fp, 'rb')
 
-                is_authenticated = self.auth_service.can('show', ident)
-                if is_authenticated is False:
-                   msg = "could not resolve identifier: %s " % (ident)
-                   return NotFoundResponse(msg)
-                
                 # hand the Image object its info
                 info = self._get_info(ident, request, base_uri)[0]
 
@@ -666,12 +646,6 @@ class Loris(object):
                 return r
         else:
             try:
-
-                is_authenticated = self.auth_service.can('show', ident)
-                if is_authenticated is False:
-                    msg = "could not resolve identifier: %s " % (ident)
-                    return NotFoundResponse(msg)
-
                 # 1. Get the info
                 info = self._get_info(ident, request, base_uri)[0]
 
