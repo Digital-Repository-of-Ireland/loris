@@ -552,7 +552,7 @@ class Loris(object):
             is_authenticated = self.auth_service.can('info', ident)
             if is_authenticated is False:
                 msg = "could not resolve identifier: %s " % (ident)
-                logger.error(msg)
+                self.logger.error(msg)
                 raise ResolverException(404, msg)
 
             info = self.resolver.resolve(self, ident, base_uri)
